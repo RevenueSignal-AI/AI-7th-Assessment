@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { buildQuestions } from "./questions";
+import { generateStudyPlan, generateStudyPlanHTML } from "./studyPlan";
 
 const domains = [
   { name: "AI Foundations and Concepts", count: 8, weight: "20%", color: "#2563EB" },
@@ -112,7 +113,7 @@ function WelcomeScreen({ onStart }) {
   );
 }
 
-function QuestionScreen({ question, questions, index, total, answer, onAnswer, onNext, onPrev, currentDomain }) {
+function QuestionScreen({ question, questions, index, total, answer, onAnswer, onNext, onPrev, onExit, currentDomain }) {
   const domainInfo = domains.find(d => d.name === question.domain);
   const domainColor = domainInfo?.color || "#2563EB";
   const domainQuestions = questions.filter(q => q.domain === question.domain);
@@ -218,6 +219,19 @@ function QuestionScreen({ question, questions, index, total, answer, onAnswer, o
           {index === total - 1 ? "Finish Assessment" : "Next"}
         </button>
       </div>
+
+      <div style={{ textAlign: "center", marginTop: 16 }}>
+        <button
+          onClick={onExit}
+          style={{
+            background: "none", border: "none", fontSize: 13,
+            color: "#9CA3AF", cursor: "pointer", textDecoration: "underline",
+            padding: "4px 8px"
+          }}
+        >
+          Exit early &amp; view results
+        </button>
+      </div>
     </div>
   );
 }
@@ -252,16 +266,132 @@ function DomainTransition({ domainName, domainIndex, onContinue }) {
   );
 }
 
+function StudyPlanSection({ domainScores, totalPct, levelName }) {
+  const plan = generateStudyPlan(domainScores, totalPct, levelName);
+
+  const handleDownload = () => {
+    const html = generateStudyPlanHTML(plan);
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "AI-Proficiency-Upskilling-Plan.html";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <h3 style={{
+        fontSize: 14, fontWeight: 600, color: "#6B7280",
+        textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12
+      }}>
+        Personalized Upskilling Plan
+      </h3>
+
+      <div style={{
+        background: "linear-gradient(135deg, #EFF6FF, #F5F3FF)",
+        border: "1px solid #DBEAFE", borderRadius: 12, padding: 20, marginBottom: 16
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 12, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5 }}>Your Level</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#1E40AF" }}>{levelName} ({totalPct}%)</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 12, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5 }}>Target</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#059669" }}>Competent (60%+)</div>
+          </div>
+        </div>
+        <div style={{ fontSize: 13, color: "#4B5563" }}>
+          Estimated study time: <strong>{plan.estimatedWeeks} weeks</strong> at 3-5 hours per week
+        </div>
+      </div>
+
+      {plan.domainPlans.map((dp, di) => (
+        <div key={di} style={{
+          background: "white", border: "1px solid #E5E7EB", borderRadius: 12,
+          padding: 20, marginBottom: 12
+        }}>
+          <h4 style={{ fontSize: 15, fontWeight: 700, color: "#1E40AF", margin: "0 0 4px" }}>
+            {dp.domain}
+          </h4>
+          <p style={{ fontSize: 12, color: "#6B7280", margin: "0 0 16px", lineHeight: 1.5 }}>
+            {dp.description}
+          </p>
+
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+            Recommended Courses
+          </div>
+          {dp.courses.map((c, ci) => (
+            <div key={ci} style={{
+              background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8,
+              padding: "10px 14px", marginBottom: 6
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 3 }}>
+                {ci + 1}. {c.title}
+              </div>
+              <div style={{ fontSize: 11, color: "#6B7280", display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <span>{c.provider}</span>
+                <span>&middot; {c.duration}</span>
+                <span>&middot; {c.level}</span>
+              </div>
+              <a href={c.url} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 11, color: "#2563EB", textDecoration: "none", wordBreak: "break-all" }}>
+                {c.url}
+              </a>
+            </div>
+          ))}
+
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, margin: "14px 0 8px" }}>
+            Practice Activities
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {dp.practiceActivities.map((a, ai) => (
+              <li key={ai} style={{ fontSize: 12, color: "#374151", marginBottom: 6, lineHeight: 1.5 }}>
+                {a}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      <div style={{ textAlign: "center", marginTop: 16 }}>
+        <button
+          onClick={handleDownload}
+          style={{
+            background: "linear-gradient(135deg, #059669, #0891B2)", color: "white",
+            border: "none", borderRadius: 12, padding: "12px 32px", fontSize: 14,
+            fontWeight: 600, cursor: "pointer",
+            boxShadow: "0 4px 14px rgba(5,150,105,0.3)",
+            display: "inline-flex", alignItems: "center", gap: 8
+          }}
+        >
+          Download Upskilling Plan
+        </button>
+        <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>
+          Opens on any phone, tablet, or computer &middot; Printable
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ResultsScreen({ answers, questions, onRestart }) {
+  const answeredCount = Object.keys(answers).length;
+  const isPartial = answeredCount < questions.length;
   const correctCount = questions.reduce((c, q, i) => c + (answers[i] === q.correct ? 1 : 0), 0);
-  const totalPct = Math.round((correctCount / 40) * 100);
+  const totalPct = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
   const level = getLevel(totalPct);
-  
+
   const domainScores = domains.map(d => {
     const qs = questions.filter(q => q.domain === d.name);
+    const answered = qs.filter(q => answers[questions.indexOf(q)] !== undefined);
     const correct = qs.reduce((c, q) => c + (answers[questions.indexOf(q)] === q.correct ? 1 : 0), 0);
-    const pct = Math.round((correct / qs.length) * 100);
-    return { ...d, correct, total: qs.length, pct, level: getLevel(pct) };
+    const pct = answered.length > 0 ? Math.round((correct / answered.length) * 100) : 0;
+    return { ...d, correct, total: qs.length, answered: answered.length, pct, level: getLevel(pct) };
   });
 
   const weakest = [...domainScores].sort((a, b) => a.pct - b.pct).slice(0, 2);
@@ -288,9 +418,24 @@ function ResultsScreen({ answers, questions, onRestart }) {
           {level.name}
         </h1>
         <p style={{ fontSize: 14, color: "#6B7280", margin: 0 }}>
-          {correctCount} of 40 correct &middot; {totalPct} points
+          {correctCount} of {answeredCount} answered correct{isPartial ? ` (${answeredCount}/${questions.length} questions completed)` : ""}
         </p>
       </div>
+
+      {/* Partial completion notice */}
+      {isPartial && (
+        <div style={{
+          background: "#FFF7ED", border: "1px solid #FED7AA",
+          borderRadius: 12, padding: 14, marginBottom: 16, textAlign: "center"
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#C2410C" }}>
+            Partial Assessment — you completed {answeredCount} of {questions.length} questions
+          </span>
+          <p style={{ fontSize: 12, color: "#9A3412", margin: "4px 0 0" }}>
+            Scores are based on questions answered. Complete the full assessment for a comprehensive evaluation.
+          </p>
+        </div>
+      )}
 
       {/* Benchmark bar */}
       <div style={{
@@ -348,7 +493,7 @@ function ResultsScreen({ answers, questions, onRestart }) {
               </div>
               <ProgressBar value={d.pct} max={100} color={d.color} height={6} />
               <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>
-                {d.correct}/{d.total} correct &middot; Weight: {d.weight}
+                {d.correct}/{d.answered} correct{d.answered < d.total ? ` (${d.answered}/${d.total} answered)` : ""} &middot; Weight: {d.weight}
               </div>
             </div>
           ))}
@@ -391,6 +536,9 @@ function ResultsScreen({ answers, questions, onRestart }) {
           ))}
         </div>
       </div>
+
+      {/* Upskilling Study Plan */}
+      <StudyPlanSection domainScores={domainScores} totalPct={totalPct} levelName={level.name} />
 
       {/* Restart */}
       <div style={{ textAlign: "center", paddingBottom: 40 }}>
@@ -467,6 +615,11 @@ export default function AIMIAModule7() {
     }
   };
 
+  const handleExit = () => {
+    setScreen("results");
+    scrollTop();
+  };
+
   const handleRestart = () => {
     setQuestions(buildQuestions());
     setAnswers({});
@@ -513,6 +666,7 @@ export default function AIMIAModule7() {
           onAnswer={handleAnswer}
           onNext={handleNext}
           onPrev={handlePrev}
+          onExit={handleExit}
           currentDomain={questions[currentQ].domain}
         />
       )}
