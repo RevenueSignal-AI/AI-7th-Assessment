@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { buildQuestions } from "./questions";
+import { buildQuestions, retranslateQuestions } from "./questions";
 import { generateStudyPlan, generateStudyPlanHTML } from "./studyPlan";
+import { t, getDomainName, getLevelName, getDifficulty, frameworkTranslations, LANGUAGES } from "./i18n";
 
 const domains = [
   { name: "AI Foundations and Concepts", count: 8, weight: "20%", color: "#2563EB" },
@@ -17,15 +18,6 @@ const levels = [
   { name: "Competent", range: "60-74%", color: "#10B981", min: 60, max: 74, target: true },
   { name: "Proficient", range: "75-89%", color: "#3B82F6", min: 75, max: 89 },
   { name: "Expert", range: "90-100%", color: "#8B5CF6", min: 90, max: 100 }
-];
-
-const frameworks = [
-  { name: "World Economic Forum (2025)", definition: "Integrates AI tools into regular workflows with data literacy" },
-  { name: "OECD AI Literacy (2025)", definition: "Can engage, create, manage, and design with AI across 22 competencies" },
-  { name: "DigComp 2.2 / 3.0 (EU)", definition: "Levels 3-4 of 8: independent problem-solving with AI" },
-  { name: "UNESCO AI Framework (2024)", definition: "Applies AI ethically with human-centered mindset" },
-  { name: "LinkedIn Skills on Rise (2025)", definition: "Regular AI tool usage with measurable productivity gains" },
-  { name: "U.S. Dept. of Labor (2026)", definition: "Intermediate Level: applies AI professionally with ethical awareness" }
 ];
 
 function getLevel(pct) {
@@ -46,7 +38,32 @@ function ProgressBar({ value, max, color, height = 8 }) {
   );
 }
 
-function WelcomeScreen({ onStart }) {
+function LanguageToggle({ lang, onChange }) {
+  return (
+    <div style={{
+      display: "flex", justifyContent: "center", gap: 6, flexWrap: "wrap",
+      marginBottom: 16
+    }}>
+      {LANGUAGES.map(l => (
+        <button
+          key={l.code}
+          onClick={() => onChange(l.code)}
+          style={{
+            background: lang === l.code ? "#2563EB" : "white",
+            color: lang === l.code ? "white" : "#6B7280",
+            border: `1px solid ${lang === l.code ? "#2563EB" : "#E5E7EB"}`,
+            borderRadius: 20, padding: "4px 12px", fontSize: 12,
+            fontWeight: 600, cursor: "pointer", transition: "all 0.15s"
+          }}
+        >
+          {l.short}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function WelcomeScreen({ onStart, lang }) {
   return (
     <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto" }}>
       <div style={{ marginBottom: 32 }}>
@@ -58,13 +75,12 @@ function WelcomeScreen({ onStart }) {
           <span style={{ fontSize: 36, color: "white", fontWeight: 700 }}>A</span>
         </div>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "#111827", margin: "8px 0 4px" }}>
-          AIMIA Module 7
+          {t(lang, "app.title")}
         </h1>
-        <p style={{ fontSize: 18, color: "#6B7280", margin: 0 }}>AI Proficiency Assessment</p>
+        <p style={{ fontSize: 18, color: "#6B7280", margin: 0 }}>{t(lang, "app.subtitle")}</p>
       </div>
       <p style={{ fontSize: 15, color: "#374151", lineHeight: 1.6, marginBottom: 24 }}>
-        Measure your AI readiness against industry competency standards from the World Economic Forum,
-        OECD, UNESCO, DigComp, and the U.S. Department of Labor.
+        {t(lang, "welcome.intro")}
       </p>
       <div style={{
         display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 32,
@@ -72,27 +88,23 @@ function WelcomeScreen({ onStart }) {
       }}>
         <div style={{ background: "#F3F4F6", borderRadius: 12, padding: "16px 8px" }}>
           <div style={{ fontSize: 24, fontWeight: 700, color: "#2563EB" }}>40</div>
-          <div style={{ fontSize: 12, color: "#6B7280" }}>Questions</div>
+          <div style={{ fontSize: 12, color: "#6B7280" }}>{t(lang, "welcome.questions")}</div>
         </div>
         <div style={{ background: "#F3F4F6", borderRadius: 12, padding: "16px 8px" }}>
           <div style={{ fontSize: 24, fontWeight: 700, color: "#7C3AED" }}>6</div>
-          <div style={{ fontSize: 12, color: "#6B7280" }}>Domains</div>
+          <div style={{ fontSize: 12, color: "#6B7280" }}>{t(lang, "welcome.domains")}</div>
         </div>
         <div style={{ background: "#F3F4F6", borderRadius: 12, padding: "16px 8px" }}>
           <div style={{ fontSize: 24, fontWeight: 700, color: "#059669" }}>5</div>
-          <div style={{ fontSize: 12, color: "#6B7280" }}>Levels</div>
+          <div style={{ fontSize: 12, color: "#6B7280" }}>{t(lang, "welcome.levels")}</div>
         </div>
       </div>
       <div style={{
         background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 12, padding: 16,
         marginBottom: 32, textAlign: "left"
       }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#1D4ED8", marginBottom: 6 }}>
-          Target Benchmark: Level 3 - Competent (60-74%)
-        </div>
-        <div style={{ fontSize: 13, color: "#3B82F6", lineHeight: 1.5 }}>
-          The industry-recommended threshold where you can independently integrate AI tools,
-          evaluate outputs critically, and apply ethical reasoning.
+        <div style={{ fontSize: 13, color: "#1D4ED8", lineHeight: 1.5 }}>
+          {t(lang, "welcome.target")}
         </div>
       </div>
       <button
@@ -106,31 +118,28 @@ function WelcomeScreen({ onStart }) {
         onMouseOver={e => e.currentTarget.style.transform = "scale(1.03)"}
         onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}
       >
-        Begin Assessment
+        {t(lang, "welcome.start")}
       </button>
-      <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 12 }}>Estimated time: 20-30 minutes</p>
+      <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 12 }}>{t(lang, "welcome.time")}</p>
     </div>
   );
 }
 
-function QuestionScreen({ question, questions, index, total, answer, onAnswer, onNext, onPrev, onExit, currentDomain }) {
+function QuestionScreen({ question, questions, index, total, answer, onAnswer, onNext, onPrev, onExit, lang }) {
   const domainInfo = domains.find(d => d.name === question.domain);
   const domainColor = domainInfo?.color || "#2563EB";
-  const domainQuestions = questions.filter(q => q.domain === question.domain);
-  const domainIndex = domainQuestions.indexOf(question);
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto" }}>
-      {/* Top bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <span style={{
           display: "inline-block", background: domainColor + "18", color: domainColor,
           fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 20
         }}>
-          {question.domain}
+          {getDomainName(lang, question.domain)}
         </span>
         <span style={{ fontSize: 13, color: "#9CA3AF" }}>
-          {index + 1} of {total}
+          {index + 1} {t(lang, "question.of")} {total}
         </span>
       </div>
       <ProgressBar value={index + 1} max={total} color={domainColor} height={4} />
@@ -153,7 +162,7 @@ function QuestionScreen({ question, questions, index, total, answer, onAnswer, o
                    question.difficulty === "Competent" ? "#059669" : "#6B7280",
             padding: "2px 8px", borderRadius: 10
           }}>
-            {question.difficulty}
+            {getDifficulty(lang, question.difficulty)}
           </span>
         </div>
         <h2 style={{ fontSize: 18, fontWeight: 600, color: "#111827", lineHeight: 1.5, margin: "0 0 20px" }}>
@@ -203,7 +212,7 @@ function QuestionScreen({ question, questions, index, total, answer, onAnswer, o
             cursor: index === 0 ? "default" : "pointer", fontWeight: 500
           }}
         >
-          Previous
+          {t(lang, "question.previous")}
         </button>
         <button
           onClick={onNext}
@@ -216,7 +225,7 @@ function QuestionScreen({ question, questions, index, total, answer, onAnswer, o
             transition: "background 0.15s"
           }}
         >
-          {index === total - 1 ? "Finish Assessment" : "Next"}
+          {index === total - 1 ? t(lang, "question.finish") : t(lang, "question.next")}
         </button>
       </div>
 
@@ -229,14 +238,14 @@ function QuestionScreen({ question, questions, index, total, answer, onAnswer, o
             padding: "4px 8px"
           }}
         >
-          Exit early &amp; view results
+          {t(lang, "question.exit")}
         </button>
       </div>
     </div>
   );
 }
 
-function DomainTransition({ domainName, domainIndex, onContinue }) {
+function DomainTransition({ domainIndex, onContinue, lang }) {
   const d = domains[domainIndex];
   return (
     <div style={{ textAlign: "center", maxWidth: 500, margin: "40px auto" }}>
@@ -247,11 +256,13 @@ function DomainTransition({ domainName, domainIndex, onContinue }) {
         <span style={{ fontSize: 24, fontWeight: 700, color: d.color }}>{domainIndex + 1}</span>
       </div>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: "#111827", margin: "0 0 8px" }}>
-        Domain {domainIndex + 1} of 6
+        {domainIndex + 1} {t(lang, "question.of")} 6
       </h2>
-      <p style={{ fontSize: 16, color: d.color, fontWeight: 600, margin: "0 0 8px" }}>{d.name}</p>
+      <p style={{ fontSize: 16, color: d.color, fontWeight: 600, margin: "0 0 8px" }}>
+        {getDomainName(lang, d.name)}
+      </p>
       <p style={{ fontSize: 14, color: "#6B7280", margin: "0 0 24px" }}>
-        {d.count} questions &middot; {d.weight} of total score
+        {d.count} &middot; {d.weight}
       </p>
       <button
         onClick={onContinue}
@@ -260,17 +271,18 @@ function DomainTransition({ domainName, domainIndex, onContinue }) {
           padding: "12px 36px", fontSize: 15, fontWeight: 600, cursor: "pointer"
         }}
       >
-        Start Domain
+        {t(lang, "transition.start")}
       </button>
     </div>
   );
 }
 
-function StudyPlanSection({ domainScores, totalPct, levelName }) {
-  const plan = generateStudyPlan(domainScores, totalPct, levelName);
+function StudyPlanSection({ domainScores, totalPct, levelName, lang }) {
+  const translatedLevelName = getLevelName(lang, levelName);
+  const plan = generateStudyPlan(domainScores, totalPct, translatedLevelName, lang);
 
   const handleDownload = () => {
-    const html = generateStudyPlanHTML(plan);
+    const html = generateStudyPlanHTML(plan, lang);
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -288,7 +300,7 @@ function StudyPlanSection({ domainScores, totalPct, levelName }) {
         fontSize: 14, fontWeight: 600, color: "#6B7280",
         textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12
       }}>
-        Personalized Upskilling Plan
+        {t(lang, "results.upskillingPlan")}
       </h3>
 
       <div style={{
@@ -297,16 +309,16 @@ function StudyPlanSection({ domainScores, totalPct, levelName }) {
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
           <div>
-            <div style={{ fontSize: 12, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5 }}>Your Level</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#1E40AF" }}>{levelName} ({totalPct}%)</div>
+            <div style={{ fontSize: 12, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5 }}>{t(lang, "results.yourLevel")}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#1E40AF" }}>{translatedLevelName} ({totalPct}%)</div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 12, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5 }}>Target</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#059669" }}>Competent (60%+)</div>
+            <div style={{ fontSize: 12, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5 }}>{t(lang, "results.target")}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#059669" }}>{t(lang, "results.targetLevel")}</div>
           </div>
         </div>
         <div style={{ fontSize: 13, color: "#4B5563" }}>
-          Estimated study time: <strong>{plan.estimatedWeeks} weeks</strong> at 3-5 hours per week
+          {t(lang, "results.estimated")}: <strong>{plan.estimatedWeeks} {t(lang, "results.weeks")}</strong> {t(lang, "results.hoursPerWeek")}
         </div>
       </div>
 
@@ -323,7 +335,7 @@ function StudyPlanSection({ domainScores, totalPct, levelName }) {
           </p>
 
           <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
-            Recommended Courses
+            {t(lang, "results.recommendedCourses")}
           </div>
           {dp.courses.map((c, ci) => (
             <div key={ci} style={{
@@ -346,7 +358,7 @@ function StudyPlanSection({ domainScores, totalPct, levelName }) {
           ))}
 
           <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, margin: "14px 0 8px" }}>
-            Practice Activities
+            {t(lang, "results.practiceActivities")}
           </div>
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {dp.practiceActivities.map((a, ai) => (
@@ -369,22 +381,23 @@ function StudyPlanSection({ domainScores, totalPct, levelName }) {
             display: "inline-flex", alignItems: "center", gap: 8
           }}
         >
-          Download Upskilling Plan
+          {t(lang, "results.download")}
         </button>
         <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>
-          Opens on any phone, tablet, or computer &middot; Printable
+          {t(lang, "results.downloadNote")}
         </p>
       </div>
     </div>
   );
 }
 
-function ResultsScreen({ answers, questions, onRestart }) {
+function ResultsScreen({ answers, questions, onRestart, lang }) {
   const answeredCount = Object.keys(answers).length;
   const isPartial = answeredCount < questions.length;
   const correctCount = questions.reduce((c, q, i) => c + (answers[i] === q.correct ? 1 : 0), 0);
   const totalPct = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
   const level = getLevel(totalPct);
+  const translatedLevel = getLevelName(lang, level.name);
 
   const domainScores = domains.map(d => {
     const qs = questions.filter(q => q.domain === d.name);
@@ -395,10 +408,10 @@ function ResultsScreen({ answers, questions, onRestart }) {
   });
 
   const weakest = [...domainScores].sort((a, b) => a.pct - b.pct).slice(0, 2);
+  const frameworks = frameworkTranslations[lang];
 
   return (
     <div style={{ maxWidth: 700, margin: "0 auto" }}>
-      {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div style={{
           display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -415,45 +428,41 @@ function ResultsScreen({ answers, questions, onRestart }) {
           </div>
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "#111827", margin: "0 0 4px" }}>
-          {level.name}
+          {translatedLevel}
         </h1>
         <p style={{ fontSize: 14, color: "#6B7280", margin: 0 }}>
-          {correctCount} of {answeredCount} answered correct{isPartial ? ` (${answeredCount}/${questions.length} questions completed)` : ""}
+          {correctCount} / {answeredCount} {t(lang, "results.correctOf")}
+          {isPartial ? ` · ${answeredCount} / ${questions.length} ${t(lang, "results.completed")}` : ""}
         </p>
       </div>
 
-      {/* Partial completion notice */}
       {isPartial && (
         <div style={{
           background: "#FFF7ED", border: "1px solid #FED7AA",
           borderRadius: 12, padding: 14, marginBottom: 16, textAlign: "center"
         }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: "#C2410C" }}>
-            Partial Assessment — you completed {answeredCount} of {questions.length} questions
+            {t(lang, "results.partialTitle")} {answeredCount} {t(lang, "results.partialOf")} {questions.length}
           </span>
           <p style={{ fontSize: 12, color: "#9A3412", margin: "4px 0 0" }}>
-            Scores are based on questions answered. Complete the full assessment for a comprehensive evaluation.
+            {t(lang, "results.partialNote")}
           </p>
         </div>
       )}
 
-      {/* Benchmark bar */}
       <div style={{
         background: totalPct >= 60 ? "#ECFDF5" : "#FEF2F2",
         border: `1px solid ${totalPct >= 60 ? "#A7F3D0" : "#FECACA"}`,
         borderRadius: 12, padding: 16, marginBottom: 24, textAlign: "center"
       }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: totalPct >= 60 ? "#059669" : "#DC2626" }}>
-          {totalPct >= 60
-            ? "You meet the industry-recommended competency benchmark (Level 3: 60%+)"
-            : "Below the industry-recommended competency benchmark (Level 3: 60%)"}
+          {totalPct >= 60 ? t(lang, "results.meetsBenchmark") : t(lang, "results.belowBenchmark")}
         </span>
       </div>
 
-      {/* Proficiency scale */}
       <div style={{ marginBottom: 28 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
-          Proficiency Scale
+          {t(lang, "results.proficiencyScale")}
         </h3>
         <div style={{ display: "flex", gap: 2, borderRadius: 8, overflow: "hidden", height: 28, position: "relative" }}>
           {levels.map((l, i) => (
@@ -463,7 +472,7 @@ function ResultsScreen({ answers, questions, onRestart }) {
               fontSize: 10, fontWeight: 600,
               color: l.name === level.name ? "white" : l.color + "90"
             }}>
-              {l.name}
+              {getLevelName(lang, l.name)}
             </div>
           ))}
         </div>
@@ -472,10 +481,9 @@ function ResultsScreen({ answers, questions, onRestart }) {
         </div>
       </div>
 
-      {/* Domain breakdown */}
       <div style={{ marginBottom: 28 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>
-          Domain Breakdown
+          {t(lang, "results.domainBreakdown")}
         </h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {domainScores.map((d, i) => (
@@ -483,41 +491,41 @@ function ResultsScreen({ answers, questions, onRestart }) {
               background: "white", border: "1px solid #E5E7EB", borderRadius: 10, padding: "12px 16px"
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#1F2937" }}>{d.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#1F2937" }}>{getDomainName(lang, d.name)}</span>
                 <span style={{
                   fontSize: 12, fontWeight: 700, color: d.level.color,
                   background: d.level.color + "15", padding: "2px 8px", borderRadius: 10
                 }}>
-                  {d.pct}% &middot; {d.level.name}
+                  {d.pct}% &middot; {getLevelName(lang, d.level.name)}
                 </span>
               </div>
               <ProgressBar value={d.pct} max={100} color={d.color} height={6} />
               <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>
-                {d.correct}/{d.answered} correct{d.answered < d.total ? ` (${d.answered}/${d.total} answered)` : ""} &middot; Weight: {d.weight}
+                {d.correct} / {d.answered} {t(lang, "results.correct")}
+                {d.answered < d.total ? ` (${d.answered} / ${d.total} ${t(lang, "results.answered")})` : ""}
+                {" · "}{t(lang, "results.weight")}: {d.weight}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Gap Analysis */}
       <div style={{
         background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 12, padding: 16, marginBottom: 24
       }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, color: "#92400E", margin: "0 0 8px" }}>
-          Priority Development Areas
+          {t(lang, "results.priorityAreas")}
         </h3>
         {weakest.map((d, i) => (
           <div key={i} style={{ fontSize: 13, color: "#78350F", marginBottom: 4 }}>
-            {i + 1}. <strong>{d.name}</strong> ({d.pct}%) - {d.pct < 60 ? "Below benchmark" : "At benchmark, room to grow"}
+            {i + 1}. <strong>{getDomainName(lang, d.name)}</strong> ({d.pct}%) - {d.pct < 60 ? t(lang, "results.belowBench") : t(lang, "results.atBench")}
           </div>
         ))}
       </div>
 
-      {/* Industry Benchmark */}
       <div style={{ marginBottom: 28 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
-          Industry Benchmark Comparison
+          {t(lang, "results.benchmark")}
         </h3>
         <div style={{
           border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden"
@@ -537,10 +545,8 @@ function ResultsScreen({ answers, questions, onRestart }) {
         </div>
       </div>
 
-      {/* Upskilling Study Plan */}
-      <StudyPlanSection domainScores={domainScores} totalPct={totalPct} levelName={level.name} />
+      <StudyPlanSection domainScores={domainScores} totalPct={totalPct} levelName={level.name} lang={lang} />
 
-      {/* Restart */}
       <div style={{ textAlign: "center", paddingBottom: 40 }}>
         <button
           onClick={onRestart}
@@ -551,10 +557,10 @@ function ResultsScreen({ answers, questions, onRestart }) {
             boxShadow: "0 4px 14px rgba(37,99,235,0.3)"
           }}
         >
-          Retake Assessment
+          {t(lang, "results.retake")}
         </button>
         <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 8 }}>
-          Recommended: retake every 3-6 months to track growth
+          {t(lang, "results.retakeNote")}
         </p>
       </div>
     </div>
@@ -562,8 +568,9 @@ function ResultsScreen({ answers, questions, onRestart }) {
 }
 
 export default function AIMIAModule7() {
-  const [screen, setScreen] = useState("welcome"); // welcome, transition, question, results
-  const [questions, setQuestions] = useState(() => buildQuestions());
+  const [lang, setLang] = useState("en");
+  const [screen, setScreen] = useState("welcome");
+  const [questions, setQuestions] = useState(() => buildQuestions("en"));
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState({});
   const [currentDomainIdx, setCurrentDomainIdx] = useState(0);
@@ -571,6 +578,11 @@ export default function AIMIAModule7() {
 
   const scrollTop = () => {
     if (containerRef.current) containerRef.current.scrollTop = 0;
+  };
+
+  const handleLangChange = (newLang) => {
+    setLang(newLang);
+    setQuestions(prev => retranslateQuestions(prev, newLang));
   };
 
   const startAssessment = () => {
@@ -621,7 +633,7 @@ export default function AIMIAModule7() {
   };
 
   const handleRestart = () => {
-    setQuestions(buildQuestions());
+    setQuestions(buildQuestions(lang));
     setAnswers({});
     setCurrentQ(0);
     setCurrentDomainIdx(0);
@@ -638,7 +650,8 @@ export default function AIMIAModule7() {
         overflowY: "auto", maxHeight: "100vh", boxSizing: "border-box"
       }}
     >
-      {/* Logo */}
+      <LanguageToggle lang={lang} onChange={handleLangChange} />
+
       <div style={{ textAlign: "center", marginBottom: 28, opacity: screen === "welcome" ? 0 : 1 }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: "#2563EB", letterSpacing: 2 }}>
           AIMIA
@@ -646,13 +659,13 @@ export default function AIMIAModule7() {
         <span style={{ fontSize: 12, color: "#9CA3AF", marginLeft: 8 }}>Module 7</span>
       </div>
 
-      {screen === "welcome" && <WelcomeScreen onStart={startAssessment} />}
+      {screen === "welcome" && <WelcomeScreen onStart={startAssessment} lang={lang} />}
 
       {screen === "transition" && (
         <DomainTransition
-          domainName={domains[currentDomainIdx].name}
           domainIndex={currentDomainIdx}
           onContinue={() => { setScreen("question"); scrollTop(); }}
+          lang={lang}
         />
       )}
 
@@ -667,12 +680,12 @@ export default function AIMIAModule7() {
           onNext={handleNext}
           onPrev={handlePrev}
           onExit={handleExit}
-          currentDomain={questions[currentQ].domain}
+          lang={lang}
         />
       )}
 
       {screen === "results" && (
-        <ResultsScreen answers={answers} questions={questions} onRestart={handleRestart} />
+        <ResultsScreen answers={answers} questions={questions} onRestart={handleRestart} lang={lang} />
       )}
     </div>
   );
