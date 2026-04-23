@@ -261,8 +261,11 @@ function DomainTransition({ domainIndex, onContinue, lang }) {
       <p style={{ fontSize: 16, color: d.color, fontWeight: 600, margin: "0 0 8px" }}>
         {getDomainName(lang, d.name)}
       </p>
-      <p style={{ fontSize: 14, color: "#6B7280", margin: "0 0 24px" }}>
-        {d.count} &middot; {d.weight}
+      <p style={{ fontSize: 14, color: "#6B7280", margin: "0 0 6px" }}>
+        {d.count} {t(lang, "transition.questions")} &middot; {d.weight} {t(lang, "transition.weightOfOverall")}
+      </p>
+      <p style={{ fontSize: 12, color: "#9CA3AF", fontStyle: "italic", margin: "0 0 24px", maxWidth: 420, marginLeft: "auto", marginRight: "auto", lineHeight: 1.4 }}>
+        {t(lang, "transition.weightExplanation")}
       </p>
       <button
         onClick={onContinue}
@@ -272,6 +275,64 @@ function DomainTransition({ domainIndex, onContinue, lang }) {
         }}
       >
         {t(lang, "transition.start")}
+      </button>
+    </div>
+  );
+}
+
+function DomainComplete({ domainIndex, score, total, pct, isLast, onContinue, lang }) {
+  const d = domains[domainIndex];
+  const level = getLevel(pct);
+  const translatedLevel = getLevelName(lang, level.name);
+
+  return (
+    <div style={{ textAlign: "center", maxWidth: 520, margin: "40px auto" }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#6B7280", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
+        {t(lang, "domainComplete.title")}
+      </div>
+      <p style={{ fontSize: 14, color: "#6B7280", margin: "0 0 20px" }}>
+        {t(lang, "domainComplete.subtitle")}
+      </p>
+
+      <div style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 110, height: 110, borderRadius: "50%",
+        background: `conic-gradient(${level.color} ${pct * 3.6}deg, #E5E7EB ${pct * 3.6}deg)`,
+        marginBottom: 16
+      }}>
+        <div style={{
+          width: 86, height: 86, borderRadius: "50%", background: "white",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexDirection: "column"
+        }}>
+          <span style={{ fontSize: 28, fontWeight: 800, color: level.color }}>{pct}%</span>
+        </div>
+      </div>
+
+      <div style={{
+        display: "inline-block", background: level.color + "15", color: level.color,
+        padding: "4px 14px", borderRadius: 20, fontSize: 13, fontWeight: 700, marginBottom: 16
+      }}>
+        {translatedLevel}
+      </div>
+
+      <p style={{ fontSize: 15, color: d.color, fontWeight: 600, margin: "0 0 4px" }}>
+        {getDomainName(lang, d.name)}
+      </p>
+      <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 24px" }}>
+        {score} / {total} {t(lang, "results.correct")}
+      </p>
+
+      <button
+        onClick={onContinue}
+        style={{
+          background: isLast ? "linear-gradient(135deg, #059669, #0891B2)" : d.color,
+          color: "white", border: "none", borderRadius: 10,
+          padding: "12px 32px", fontSize: 15, fontWeight: 600, cursor: "pointer",
+          boxShadow: isLast ? "0 4px 14px rgba(5,150,105,0.3)" : "none"
+        }}
+      >
+        {isLast ? t(lang, "domainComplete.viewResults") : t(lang, "domainComplete.continue")}
       </button>
     </div>
   );
@@ -601,22 +662,33 @@ export default function AIMIAModule7() {
   };
 
   const handleNext = () => {
-    if (currentQ === questions.length - 1) {
+    const currentDomain = getDomainForQuestion(currentQ);
+    const isLastQuestion = currentQ === questions.length - 1;
+    const nextDomain = isLastQuestion ? null : getDomainForQuestion(currentQ + 1);
+    const domainChanged = isLastQuestion || nextDomain !== currentDomain;
+
+    if (domainChanged) {
+      setScreen("domainComplete");
+      scrollTop();
+      return;
+    }
+
+    setCurrentQ(currentQ + 1);
+    scrollTop();
+  };
+
+  const handleDomainContinue = () => {
+    const isLastQuestion = currentQ === questions.length - 1;
+    if (isLastQuestion) {
       setScreen("results");
       scrollTop();
       return;
     }
     const nextQ = currentQ + 1;
-    const currentDomain = getDomainForQuestion(currentQ);
     const nextDomain = getDomainForQuestion(nextQ);
-
-    if (nextDomain !== currentDomain) {
-      setCurrentDomainIdx(nextDomain);
-      setCurrentQ(nextQ);
-      setScreen("transition");
-    } else {
-      setCurrentQ(nextQ);
-    }
+    setCurrentDomainIdx(nextDomain);
+    setCurrentQ(nextQ);
+    setScreen("transition");
     scrollTop();
   };
 
@@ -683,6 +755,26 @@ export default function AIMIAModule7() {
           lang={lang}
         />
       )}
+
+      {screen === "domainComplete" && (() => {
+        const domainName = questions[currentQ].domain;
+        const domainIdx = domains.findIndex(d => d.name === domainName);
+        const qs = questions.filter(q => q.domain === domainName);
+        const correct = qs.reduce((c, q) => c + (answers[questions.indexOf(q)] === q.correct ? 1 : 0), 0);
+        const pct = qs.length > 0 ? Math.round((correct / qs.length) * 100) : 0;
+        const isLast = currentQ === questions.length - 1;
+        return (
+          <DomainComplete
+            domainIndex={domainIdx}
+            score={correct}
+            total={qs.length}
+            pct={pct}
+            isLast={isLast}
+            onContinue={handleDomainContinue}
+            lang={lang}
+          />
+        );
+      })()}
 
       {screen === "results" && (
         <ResultsScreen answers={answers} questions={questions} onRestart={handleRestart} lang={lang} />
